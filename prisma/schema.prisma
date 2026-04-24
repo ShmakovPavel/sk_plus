@@ -1,0 +1,157 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  PARENT
+  CHILD
+}
+
+enum LinkStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum GoalStatus {
+  ACTIVE
+  COMPLETED
+}
+
+enum GoalStageStatus {
+  PENDING
+  WAITING_APPROVAL
+  DONE
+}
+
+enum QuestionCategory {
+  GENERAL_ERUDITION
+  SCHOOL_PROGRAM
+  FINANCIAL_LITERACY
+  OTHER
+}
+
+model User {
+  id           String        @id @default(cuid())
+  email        String        @unique
+  passwordHash String
+  firstName    String
+  lastName     String
+  role         UserRole
+  isAdmin      Boolean       @default(false)
+  isBlocked    Boolean       @default(false)
+  balance      Int           @default(0)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  sessions     Session[]
+  parentLinks  FamilyLink[]  @relation("ParentLinks")
+  childLinks   FamilyLink[]  @relation("ChildLinks")
+  createdGoals Goal[]        @relation("GoalCreator")
+  childGoals   Goal[]        @relation("GoalChild")
+  payments     Payment[]
+  submissions  GoalStage[]   @relation("ProofSubmitter")
+  attempts     QuizAttempt[]
+  launches     QuizLaunch[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model FamilyLink {
+  id        String     @id @default(cuid())
+  parentId  String
+  childId   String
+  status    LinkStatus @default(PENDING)
+  createdAt DateTime   @default(now())
+  parent    User       @relation("ParentLinks", fields: [parentId], references: [id], onDelete: Cascade)
+  child     User       @relation("ChildLinks", fields: [childId], references: [id], onDelete: Cascade)
+
+  @@unique([parentId, childId])
+}
+
+model Goal {
+  id          String      @id @default(cuid())
+  title       String
+  description String
+  totalAmount Int
+  createdById String
+  childId     String
+  status      GoalStatus  @default(ACTIVE)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  createdBy   User        @relation("GoalCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  child       User        @relation("GoalChild", fields: [childId], references: [id], onDelete: Cascade)
+  stages      GoalStage[]
+}
+
+model GoalStage {
+  id            String          @id @default(cuid())
+  goalId         String
+  title          String
+  amount         Int
+  orderIndex     Int
+  status         GoalStageStatus @default(PENDING)
+  proofUrl       String?
+  proofMimeType  String?
+  submittedById  String?
+  createdAt      DateTime       @default(now())
+  rewardedAt     DateTime?
+  goal           Goal           @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  submittedBy    User?          @relation("ProofSubmitter", fields: [submittedById], references: [id], onDelete: SetNull)
+}
+
+model Payment {
+  id        String   @id @default(cuid())
+  userId    String
+  service   String
+  amount    Int
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Question {
+  id          String           @id @default(cuid())
+  text        String
+  optionA     String
+  optionB     String
+  optionC     String
+  optionD     String
+  correctIndex Int
+  category    QuestionCategory
+  isActive    Boolean          @default(true)
+  createdAt   DateTime         @default(now())
+}
+
+model QuizAttempt {
+  id             String       @id @default(cuid())
+  userId         String
+  score          Int
+  correctAnswers Int
+  totalQuestions Int
+  createdAt      DateTime     @default(now())
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model QuizLaunch {
+  id            String   @id @default(cuid())
+  startedById   String
+  questionCount Int
+  createdAt     DateTime @default(now())
+  startedBy     User     @relation(fields: [startedById], references: [id], onDelete: Cascade)
+}
