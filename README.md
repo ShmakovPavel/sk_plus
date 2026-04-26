@@ -32,7 +32,8 @@
 
 ```bash
 npm install
-npx prisma migrate dev --name init
+npx prisma generate
+npx prisma db push
 npm run prisma:seed
 npm run dev
 ```
@@ -50,5 +51,87 @@ npm run dev
 
 - Next.js (App Router, TypeScript)
 - Tailwind CSS
-- Prisma ORM + SQLite
+- Prisma ORM + PostgreSQL
 - bcryptjs (хеш паролей)
+
+## Деплой в новый проект Railway
+
+Ниже точные шаги для публикации **этого** проекта в **новом** Railway-проекте.
+
+### 1) Подготовка локально
+
+В корне проекта:
+
+```bash
+copy .env.example .env
+npm install
+npx prisma generate
+```
+
+### 2) Создать новый проект в Railway
+
+1. Открой Railway Dashboard.
+2. Нажми **New Project**.
+3. Выбери **Deploy from GitHub repo**.
+4. Укажи репозиторий: `ShmakovPavel/sk_plus`.
+
+### 3) Добавить PostgreSQL в Railway
+
+1. Внутри проекта нажми **New**.
+2. Выбери **Database** → **PostgreSQL**.
+3. Дождись создания БД.
+
+### 4) Привязать переменные окружения
+
+В сервисе приложения открой **Variables** и добавь:
+
+- `DATABASE_URL` = `${{Postgres.DATABASE_URL}}` (через Railway variable reference)
+- `CRON_SECRET` = любое длинное случайное значение
+- `NODE_ENV` = `production`
+
+### 5) Настроить Build/Start команды
+
+В сервисе приложения открой **Settings**:
+
+- **Build Command**
+  ```bash
+  npm ci && npx prisma generate && npm run build
+  ```
+- **Start Command**
+  ```bash
+  npx prisma db push && npm run start
+  ```
+
+### 6) Заполнить тестовые учетки (один раз)
+
+После первого успешного деплоя открой в Railway:
+
+- сервис приложения → **Settings** → **Generate Shell** (или **Connect**)
+- выполни команду:
+
+```bash
+npm run prisma:seed
+```
+
+> `prisma:seed` полностью пересоздает данные, поэтому запускай её только осознанно.
+
+### 7) Запустить деплой
+
+1. Нажми **Deploy** (или просто `git push` в ветку, подключенную к Railway).
+2. После успешного деплоя открой выданный Railway URL.
+
+### 8) Проверка после деплоя
+
+Проверь вручную:
+
+- `/login`
+- `/admin`
+- `/quiz`
+- `/payments`
+
+Демо-вход:
+
+- Родитель: `parent@sk.plus` / `12345678`
+- Ребёнок Андрей: `child@sk.plus` / `12345678`
+- Ребёнок Лиза: `liza@sk.plus` / `12345678`
+- Админ: `admin@sk.plus` / `12345678`
