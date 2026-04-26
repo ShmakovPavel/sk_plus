@@ -132,7 +132,26 @@ function guessCategory(text: string): QuestionCategory {
   return QuestionCategory.GENERAL_ERUDITION;
 }
 
+function randInt(min: number, max: number) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function randomDateInPast(daysBack: number) {
+  const now = Date.now();
+  const delta = randInt(1, daysBack) * 24 * 60 * 60 * 1000;
+  return new Date(now - delta);
+}
+
+function randomDateBetweenDays(minDaysAgo: number, maxDaysAgo: number) {
+  const now = Date.now();
+  const daysAgo = randInt(minDaysAgo, maxDaysAgo);
+  return new Date(now - daysAgo * 24 * 60 * 60 * 1000);
+}
+
 async function main() {
+  await prisma.quizSettings.deleteMany();
+  await prisma.quizLaunchAnswer.deleteMany();
+  await prisma.quizLaunchQuestion.deleteMany();
   await prisma.quizLaunch.deleteMany();
   await prisma.quizAttempt.deleteMany();
   await prisma.question.deleteMany();
@@ -175,6 +194,15 @@ async function main() {
     ],
   });
 
+  await prisma.quizSettings.create({
+    data: {
+      id: 1,
+      dailyLaunchHour: 19,
+      dailyLaunchMinute: 0,
+      questionCount: 15,
+    },
+  });
+
   const passwordHash = await bcrypt.hash("12345678", 10);
 
   const parent = await prisma.user.create({
@@ -199,6 +227,17 @@ async function main() {
     },
   });
 
+  const lisa = await prisma.user.create({
+    data: {
+      email: "liza@sk.plus",
+      passwordHash,
+      firstName: "Лиза",
+      lastName: "Иванова",
+      role: UserRole.CHILD,
+      balance: 5000,
+    },
+  });
+
   await prisma.user.create({
     data: {
       email: "admin@sk.plus",
@@ -215,6 +254,14 @@ async function main() {
     data: {
       parentId: parent.id,
       childId: child.id,
+      status: "APPROVED",
+    },
+  });
+
+  await prisma.familyLink.create({
+    data: {
+      parentId: parent.id,
+      childId: lisa.id,
       status: "APPROVED",
     },
   });
@@ -252,6 +299,197 @@ async function main() {
       },
     },
   });
+
+  await prisma.goal.create({
+    data: {
+      title: "Накопить на набор для рисования",
+      description: "Мечта осуществилась!",
+      totalAmount: 9000,
+      createdById: parent.id,
+      childId: lisa.id,
+      status: "COMPLETED",
+      stages: {
+        create: [
+          { title: "Выбрать набор и сравнить цены", amount: 3000, orderIndex: 1, status: "DONE" },
+          { title: "Сделать план покупок", amount: 3000, orderIndex: 2, status: "DONE" },
+          { title: "Показать итоговый выбор", amount: 3000, orderIndex: 3, status: "DONE" },
+        ],
+      },
+    },
+  });
+
+  await prisma.goal.create({
+    data: {
+      title: "Накопить на ролики",
+      description: "Цель в процессе: один этап уже закрыт.",
+      totalAmount: 15000,
+      createdById: parent.id,
+      childId: lisa.id,
+      stages: {
+        create: [
+          { title: "Выбрать модель и размер", amount: 5000, orderIndex: 1, status: "DONE" },
+          { title: "Записать видео с тренировкой", amount: 5000, orderIndex: 2, status: "WAITING_APPROVAL" },
+          { title: "Сделать план безопасного катания", amount: 5000, orderIndex: 3, status: "PENDING" },
+        ],
+      },
+    },
+  });
+
+  const parentFirstNames = [
+    "Ольга",
+    "Наталья",
+    "Елена",
+    "Татьяна",
+    "Ирина",
+    "Анна",
+    "Светлана",
+    "Юлия",
+    "Дарья",
+    "Ксения",
+  ];
+  const parentLastNames = [
+    "Соколова",
+    "Кузнецова",
+    "Попова",
+    "Смирнова",
+    "Волкова",
+    "Лебедева",
+    "Павлова",
+    "Козлова",
+    "Новикова",
+    "Морозова",
+  ];
+  const childFirstNames = [
+    "Миша",
+    "Соня",
+    "Дима",
+    "Алина",
+    "Кирилл",
+    "Вика",
+    "Лёша",
+    "Полина",
+    "Матвей",
+    "Арина",
+    "Петя",
+    "Ника",
+  ];
+  const generatedQuizUserIds: string[] = [];
+
+  for (let i = 1; i <= 20; i += 1) {
+    const parentFirstName = parentFirstNames[(i - 1) % parentFirstNames.length];
+    const parentLastName = parentLastNames[(i * 3) % parentLastNames.length];
+    const generatedParent = await prisma.user.create({
+      data: {
+        email: `parent${i}@sk.plus`,
+        passwordHash,
+        firstName: parentFirstName,
+        lastName: parentLastName,
+        role: UserRole.PARENT,
+        balance: randInt(2000, 150000),
+      },
+    });
+
+    const childrenCount = randInt(1, 3);
+    const generatedChildren: Array<{ id: string }> = [];
+
+    for (let childIndex = 1; childIndex <= childrenCount; childIndex += 1) {
+      const childFirstName = childFirstNames[(i + childIndex) % childFirstNames.length];
+      const childLastName = parentLastName;
+      const generatedChild = await prisma.user.create({
+        data: {
+          email: `child${i}_${childIndex}@sk.plus`,
+          passwordHash,
+          firstName: childFirstName,
+          lastName: childLastName,
+          role: UserRole.CHILD,
+          balance: randInt(0, 12000),
+        },
+      });
+      generatedChildren.push({ id: generatedChild.id });
+
+      await prisma.familyLink.create({
+        data: {
+          parentId: generatedParent.id,
+          childId: generatedChild.id,
+          status: "APPROVED",
+        },
+      });
+    }
+
+    const quizUsers = [generatedParent.id, ...generatedChildren.map((c) => c.id)];
+    generatedQuizUserIds.push(...quizUsers);
+    for (const userId of quizUsers) {
+      const attemptsCount = randInt(2, 18);
+      for (let a = 0; a < attemptsCount; a += 1) {
+        const totalQuestions = randInt(8, 20);
+        const correctAnswers = randInt(0, totalQuestions);
+        const avgPoints = correctAnswers > 0 ? randInt(70, 160) : 0;
+        await prisma.quizAttempt.create({
+          data: {
+            userId,
+            launchId: null,
+            totalQuestions,
+            correctAnswers,
+            score: correctAnswers * avgPoints,
+            createdAt: randomDateInPast(360),
+          },
+        });
+      }
+    }
+  }
+
+  const uniqueQuizUserIds = [...new Set(generatedQuizUserIds)];
+  const dailyLeaders = uniqueQuizUserIds.slice(0, 10);
+  const monthlyLeaders = uniqueQuizUserIds.slice(10, 20);
+  const yearlyLeaders = uniqueQuizUserIds.slice(20, 30);
+
+  for (const userId of dailyLeaders) {
+    for (let i = 0; i < 3; i += 1) {
+      const correctAnswers = randInt(9, 15);
+      await prisma.quizAttempt.create({
+        data: {
+          userId,
+          launchId: null,
+          totalQuestions: 15,
+          correctAnswers,
+          score: correctAnswers * randInt(150, 220),
+          createdAt: randomDateBetweenDays(0, 1),
+        },
+      });
+    }
+  }
+
+  for (const userId of monthlyLeaders) {
+    for (let i = 0; i < 4; i += 1) {
+      const correctAnswers = randInt(8, 15);
+      await prisma.quizAttempt.create({
+        data: {
+          userId,
+          launchId: null,
+          totalQuestions: 15,
+          correctAnswers,
+          score: correctAnswers * randInt(140, 210),
+          createdAt: randomDateBetweenDays(8, 26),
+        },
+      });
+    }
+  }
+
+  for (const userId of yearlyLeaders) {
+    for (let i = 0; i < 6; i += 1) {
+      const correctAnswers = randInt(10, 18);
+      await prisma.quizAttempt.create({
+        data: {
+          userId,
+          launchId: null,
+          totalQuestions: 20,
+          correctAnswers,
+          score: correctAnswers * randInt(160, 260),
+          createdAt: randomDateBetweenDays(90, 340),
+        },
+      });
+    }
+  }
 
   console.log(`Seed completed. Base goal id: ${goal.id}`);
 }

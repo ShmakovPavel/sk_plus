@@ -62,6 +62,15 @@ model User {
   submissions  GoalStage[]   @relation("ProofSubmitter")
   attempts     QuizAttempt[]
   launches     QuizLaunch[]
+  launchAnswers QuizLaunchAnswer[]
+}
+
+model QuizSettings {
+  id               Int      @id @default(1)
+  dailyLaunchHour  Int      @default(19)
+  dailyLaunchMinute Int     @default(0)
+  questionCount    Int      @default(15)
+  updatedAt        DateTime @updatedAt
 }
 
 model Session {
@@ -120,6 +129,7 @@ model Payment {
   id        String   @id @default(cuid())
   userId    String
   service   String
+  account   String   @default("")
   amount    Int
   createdAt DateTime @default(now())
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -136,22 +146,59 @@ model Question {
   category    QuestionCategory
   isActive    Boolean          @default(true)
   createdAt   DateTime         @default(now())
+  launchQuestions QuizLaunchQuestion[]
+  launchAnswers  QuizLaunchAnswer[]
 }
 
 model QuizAttempt {
   id             String       @id @default(cuid())
   userId         String
+  launchId       String?
   score          Int
   correctAnswers Int
   totalQuestions Int
   createdAt      DateTime     @default(now())
   user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  launch         QuizLaunch?  @relation(fields: [launchId], references: [id], onDelete: SetNull)
+
+  @@unique([launchId, userId])
 }
 
 model QuizLaunch {
   id            String   @id @default(cuid())
   startedById   String
   questionCount Int
+  launchDateKey String?  @unique
   createdAt     DateTime @default(now())
   startedBy     User     @relation(fields: [startedById], references: [id], onDelete: Cascade)
+  questions     QuizLaunchQuestion[]
+  attempts      QuizAttempt[]
+  answers       QuizLaunchAnswer[]
+}
+
+model QuizLaunchQuestion {
+  id        String     @id @default(cuid())
+  launchId  String
+  questionId String
+  orderIndex Int
+  launch    QuizLaunch @relation(fields: [launchId], references: [id], onDelete: Cascade)
+  question  Question   @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([launchId, orderIndex])
+  @@unique([launchId, questionId])
+}
+
+model QuizLaunchAnswer {
+  id         String     @id @default(cuid())
+  launchId   String
+  questionId String
+  userId     String
+  points     Int
+  createdAt  DateTime   @default(now())
+  launch     QuizLaunch @relation(fields: [launchId], references: [id], onDelete: Cascade)
+  question   Question   @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([launchId, questionId, userId])
+  @@index([launchId, questionId, createdAt])
 }

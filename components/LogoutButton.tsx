@@ -15,7 +15,7 @@ export function LogoutButton() {
     <button
       type="button"
       onClick={onLogout}
-      className="rounded-md border border-zinc-300 px-3 py-1 text-sm hover:bg-zinc-100"
+      className="rounded-md border border-[var(--input-border)] px-3 py-1 text-sm text-[var(--foreground)] transition-colors hover:bg-[var(--soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
     >
       Выйти
     </button>

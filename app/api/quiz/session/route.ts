@@ -1,17 +1,15 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { getQuizQuestions } from "@/lib/quiz";
-import { prisma } from "@/lib/prisma";
+import { getLaunchWithQuestionsByDateKey } from "@/lib/quizLaunch";
+import { getMoscowDateKey } from "@/lib/quizSchedule";
 
 export async function GET() {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
 
-  const latestLaunch = await prisma.quizLaunch.findFirst({
-    orderBy: { createdAt: "desc" },
-  });
+  const latestLaunch = await getLaunchWithQuestionsByDateKey(getMoscowDateKey());
 
-  const questions = await getQuizQuestions(latestLaunch?.questionCount);
+  const questions = latestLaunch?.questions.map((item) => item.question) ?? [];
 
   return NextResponse.json(
     questions.map((q) => ({

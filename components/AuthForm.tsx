@@ -11,6 +11,7 @@ export function AuthForm() {
   const [mode, setMode] = useState<Mode>("login");
   const [role, setRole] = useState<Role>("PARENT");
   const [error, setError] = useState("");
+  const [demoLoading, setDemoLoading] = useState<"parent" | "child" | "liza" | "admin" | null>(null);
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -37,18 +38,44 @@ export function AuthForm() {
       return;
     }
 
-    router.push("/");
+    router.push(data.redirectTo ?? "/");
+    router.refresh();
+  }
+
+  async function loginDemo(kind: "parent" | "child" | "liza" | "admin") {
+    const demos = {
+      parent: "parent@sk.plus",
+      child: "child@sk.plus",
+      liza: "liza@sk.plus",
+      admin: "admin@sk.plus",
+    } as const;
+    setError("");
+    setDemoLoading(kind);
+    const res = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: demos[kind], password: "12345678" }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setDemoLoading(null);
+      setError(data.error ?? "Не удалось войти в демо-аккаунт");
+      return;
+    }
+    router.push(data.redirectTo ?? "/");
     router.refresh();
   }
 
   return (
-    <div className="mx-auto w-full max-w-md rounded-xl bg-white p-6 shadow-sm">
+    <div className="mx-auto w-full max-w-md rounded-xl border border-[var(--surface-border)] bg-[var(--surface)] p-6 shadow-sm">
       <div className="mb-4 flex gap-2">
         <button
           type="button"
           onClick={() => setMode("login")}
-          className={`rounded-md px-3 py-2 text-sm ${
-            mode === "login" ? "bg-zinc-900 text-white" : "bg-zinc-100"
+          className={`rounded-md px-3 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] ${
+            mode === "login"
+              ? "bg-[var(--accent)] text-white hover:bg-[var(--accent-hover)]"
+              : "bg-[var(--soft)] text-[var(--soft-text)] hover:bg-[var(--soft-hover)]"
           }`}
         >
           Вход
@@ -56,8 +83,10 @@ export function AuthForm() {
         <button
           type="button"
           onClick={() => setMode("register")}
-          className={`rounded-md px-3 py-2 text-sm ${
-            mode === "register" ? "bg-zinc-900 text-white" : "bg-zinc-100"
+          className={`rounded-md px-3 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] ${
+            mode === "register"
+              ? "bg-[var(--accent)] text-white hover:bg-[var(--accent-hover)]"
+              : "bg-[var(--soft)] text-[var(--soft-text)] hover:bg-[var(--soft-hover)]"
           }`}
         >
           Регистрация
@@ -70,14 +99,14 @@ export function AuthForm() {
           type="email"
           required
           placeholder="Email"
-          className="w-full rounded-md border border-zinc-300 px-3 py-2"
+          className="w-full rounded-md border border-[var(--input-border)] px-3 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
         />
         <input
           name="password"
           type="password"
           required
           placeholder="Пароль (минимум 8)"
-          className="w-full rounded-md border border-zinc-300 px-3 py-2"
+          className="w-full rounded-md border border-[var(--input-border)] px-3 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
         />
 
         {mode === "register" ? (
@@ -86,20 +115,22 @@ export function AuthForm() {
               name="firstName"
               required
               placeholder="Имя"
-              className="w-full rounded-md border border-zinc-300 px-3 py-2"
+              className="w-full rounded-md border border-[var(--input-border)] px-3 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
             />
             <input
               name="lastName"
               required
               placeholder="Фамилия"
-              className="w-full rounded-md border border-zinc-300 px-3 py-2"
+              className="w-full rounded-md border border-[var(--input-border)] px-3 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
             />
             <div className="flex gap-2 text-sm">
               <button
                 type="button"
                 onClick={() => setRole("PARENT")}
-                className={`rounded-md px-3 py-2 ${
-                  role === "PARENT" ? "bg-emerald-600 text-white" : "bg-zinc-100"
+                className={`rounded-md px-3 py-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] ${
+                  role === "PARENT"
+                    ? "bg-[var(--accent)] text-white hover:bg-[var(--accent-hover)]"
+                    : "bg-[var(--soft)] text-[var(--soft-text)] hover:bg-[var(--soft-hover)]"
                 }`}
               >
                 Родитель
@@ -107,8 +138,10 @@ export function AuthForm() {
               <button
                 type="button"
                 onClick={() => setRole("CHILD")}
-                className={`rounded-md px-3 py-2 ${
-                  role === "CHILD" ? "bg-blue-600 text-white" : "bg-zinc-100"
+                className={`rounded-md px-3 py-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] ${
+                  role === "CHILD"
+                    ? "bg-[var(--accent-strong)] text-white hover:bg-[var(--accent-strong-hover)]"
+                    : "bg-[var(--soft)] text-[var(--soft-text)] hover:bg-[var(--soft-hover)]"
                 }`}
               >
                 Ребёнок
@@ -118,13 +151,50 @@ export function AuthForm() {
         ) : null}
 
         {error ? <p className="text-sm text-red-600">{error}</p> : null}
-        <button type="submit" className="w-full rounded-md bg-zinc-900 px-3 py-2 text-white">
+        <button
+          type="submit"
+          className="w-full rounded-md bg-[var(--accent)] px-3 py-2 text-white transition-colors hover:bg-[var(--accent-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
+        >
           {mode === "login" ? "Войти" : "Создать аккаунт"}
         </button>
       </form>
-      <p className="mt-4 text-xs text-zinc-500">
-        Для демо после `prisma:seed`: parent@sk.plus / child@sk.plus / admin@sk.plus, пароль 12345678.
-      </p>
+      <div className="mt-4 rounded-md border border-[var(--surface-border)] bg-[var(--soft)] p-3">
+        <p className="text-xs font-medium text-[var(--soft-text)]">Демо аккаунты</p>
+        <div className="mt-2 grid grid-cols-3 gap-2">
+          <button
+            type="button"
+            onClick={() => loginDemo("parent")}
+            disabled={demoLoading !== null}
+            className="rounded-md bg-[var(--accent)] px-2 py-1 text-xs text-white transition-colors hover:bg-[var(--accent-hover)] disabled:cursor-not-allowed disabled:opacity-70"
+          >
+            {demoLoading === "parent" ? "Вход..." : "Родитель"}
+          </button>
+          <button
+            type="button"
+            onClick={() => loginDemo("child")}
+            disabled={demoLoading !== null}
+            className="rounded-md bg-[var(--accent-strong)] px-2 py-1 text-xs text-white transition-colors hover:bg-[var(--accent-strong-hover)] disabled:cursor-not-allowed disabled:opacity-70"
+          >
+            {demoLoading === "child" ? "Вход..." : "Андрей"}
+          </button>
+          <button
+            type="button"
+            onClick={() => loginDemo("admin")}
+            disabled={demoLoading !== null}
+            className="rounded-md bg-[var(--foreground)] px-2 py-1 text-xs text-[var(--background)] transition-colors hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-70"
+          >
+            {demoLoading === "admin" ? "Вход..." : "Админ"}
+          </button>
+          <button
+            type="button"
+            onClick={() => loginDemo("liza")}
+            disabled={demoLoading !== null}
+            className="col-start-2 rounded-md bg-[var(--accent-strong)] px-2 py-1 text-xs text-white transition-colors hover:bg-[var(--accent-strong-hover)] disabled:cursor-not-allowed disabled:opacity-70"
+          >
+            {demoLoading === "liza" ? "Вход..." : "Лиза"}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

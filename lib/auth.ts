@@ -56,15 +56,14 @@ export async function getCurrentUser() {
   });
 
   if (!session || session.expiresAt < new Date()) {
-    cookieStore.delete(SESSION_COOKIE);
     if (session) {
-      await prisma.session.delete({ where: { token } });
+      await prisma.session.deleteMany({ where: { token } });
     }
     return null;
   }
 
   if (session.user.isBlocked) {
-    await destroySession();
+    await prisma.session.deleteMany({ where: { token } });
     return null;
   }
 

@@ -19,6 +19,19 @@ export default async function GoalsPage() {
       ? approvedLinks.map((l) => l.child)
       : [{ id: user.id, firstName: user.firstName, lastName: user.lastName }];
 
+  const linkedUsers =
+    user.role === UserRole.PARENT
+      ? approvedLinks.map((l) => ({
+          id: l.child.id,
+          firstName: l.child.firstName,
+          lastName: l.child.lastName,
+        }))
+      : approvedLinks.map((l) => ({
+          id: l.parent.id,
+          firstName: l.parent.firstName,
+          lastName: l.parent.lastName,
+        }));
+
   const pendingLinks = await prisma.familyLink.findMany({
     where:
       user.role === UserRole.PARENT
@@ -50,6 +63,7 @@ export default async function GoalsPage() {
         role: user.role,
       }}
       availableChildren={availableChildren}
+      linkedUsers={linkedUsers}
       pendingLinks={pendingLinks.map((l) => ({
         id: l.id,
         parentName: `${l.parent.firstName} ${l.parent.lastName}`,

@@ -7,10 +7,11 @@ export async function POST(req: Request) {
   if (!user) return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
   const body = await req.json();
   const service = body.service as string | undefined;
+  const account = String(body.account ?? "").trim();
   const amount = Number(body.amount ?? 0);
 
-  if (!service || amount <= 0) {
-    return NextResponse.json({ error: "Укажите сервис и сумму" }, { status: 400 });
+  if (!service || !account || amount <= 0) {
+    return NextResponse.json({ error: "Укажите сервис, аккаунт и сумму" }, { status: 400 });
   }
 
   const fresh = await prisma.user.findUnique({ where: { id: user.id } });
@@ -28,6 +29,7 @@ export async function POST(req: Request) {
       data: {
         userId: user.id,
         service,
+        account,
         amount,
       },
     }),
