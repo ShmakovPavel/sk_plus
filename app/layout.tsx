@@ -82,7 +82,7 @@ export default async function RootLayout({
                       </>
                     )}
                   </nav>
-                  {!user.isAdmin ? <LogoutButton /> : null}
+                  <LogoutButton />
                 </div>
               ) : null}
             </div>
