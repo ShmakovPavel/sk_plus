@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getUploadsDir } from "@/lib/uploadStorage";
 
 export async function POST(req: Request) {
   const user = await getCurrentUser();
@@ -42,7 +43,7 @@ export async function POST(req: Request) {
   const bytes = await file.arrayBuffer();
   const buffer = Buffer.from(bytes);
   const extension = extname(file.name) || ".bin";
-  const dir = join(process.cwd(), "public", "uploads");
+  const dir = getUploadsDir();
   await mkdir(dir, { recursive: true });
   const filename = `${randomUUID()}${extension}`;
   const absolute = join(dir, filename);
